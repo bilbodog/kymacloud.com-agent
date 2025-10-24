@@ -26,7 +26,6 @@ git push origin "$NEW_TAG"
 # Create GitHub release with install.sh as downloadable asset
 if command -v gh &> /dev/null; then
     gh release create "$NEW_TAG" install/install.sh \
-        --prerelease \
         --title "Dev Release $NEW_TAG" \
         --notes "Development release - download install.sh to get started"
     echo "GitHub release created with install.sh attached!"
