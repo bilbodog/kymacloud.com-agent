@@ -78,7 +78,7 @@ EOF
 
 validate_input() {
     # Check if QUERY_ID is set and not placeholder
-    if [ -z "$QUERY_ID" ] || [ "$QUERY_ID" = "__QUERY_ID__" ]; then
+    if [ -z "$QUERY_ID" ]; then
         log_error "Manglende QUERY_ID"
         echo ""
         echo "Dette script får QUERY_ID automatisk fra API når det serves."
