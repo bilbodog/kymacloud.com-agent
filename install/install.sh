@@ -538,8 +538,29 @@ ENVEOF
     
     # Opdater docker-compose.yml med organization paths
     if [ -f "$KYMA_HOME/platform/docker-compose.yml" ]; then
+        log_info "Opdaterer docker-compose.yml med org-${ORG_ID} paths..."
+        
+        # Tjek at ORG_ID er sat
+        if [ -z "$ORG_ID" ]; then
+            log_error "ORG_ID er ikke sat! Kan ikke konfigurere docker-compose.yml"
+            return 1
+        fi
+        
         # Erstat kun __ORG_ID__ placeholders (resten håndteres af .env)
         sed -i "s|__ORG_ID__|${ORG_ID}|g" "$KYMA_HOME/platform/docker-compose.yml"
+        
+        # Verificer at erstatningen skete
+        if grep -q "__ORG_ID__" "$KYMA_HOME/platform/docker-compose.yml"; then
+            log_error "docker-compose.yml indeholder stadig __ORG_ID__ placeholder!"
+            log_error "sed kommando fejlede. ORG_ID var: ${ORG_ID}"
+            return 1
+        fi
+        
+        # Verificer at den korrekte path eksisterer
+        if ! grep -q "organizations/org-${ORG_ID}/sites" "$KYMA_HOME/platform/docker-compose.yml"; then
+            log_warning "docker-compose.yml indeholder ikke forventet path: org-${ORG_ID}"
+        fi
+        
         log_success "docker-compose.yml konfigureret med org-${ORG_ID} paths"
     else
         log_error "docker-compose.yml ikke fundet"
