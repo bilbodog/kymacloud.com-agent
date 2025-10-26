@@ -374,7 +374,7 @@ EOF
 copy_platform_files() {
     log_step "STEP 7: Downloader platform filer"
     
-    local PLATFORM_RELEASE_URL="https://app.kymacloud.com/releases/production/rel.zip"
+    local PLATFORM_RELEASE_URL="https://kymoso2.vyprojects.org/releases/production/rel.zip"
     local TEMP_DIR="/tmp/kyma-platform-$$"
     local ZIP_FILE="$TEMP_DIR/rel.zip"
     
