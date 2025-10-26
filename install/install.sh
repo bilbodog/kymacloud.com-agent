@@ -374,7 +374,7 @@ EOF
 copy_platform_files() {
     log_step "STEP 7: Downloader platform filer"
     
-    local PLATFORM_RELEASE_URL="https://kymoso2.vyprojects.org/rel.zip"
+    local PLATFORM_RELEASE_URL="https://app.kymacloud.com/releases/production/rel.zip"
     local TEMP_DIR="/tmp/kyma-platform-$$"
     local ZIP_FILE="$TEMP_DIR/rel.zip"
     
@@ -511,8 +511,8 @@ generate_configuration() {
         sed -i "s|__ORG_EMAIL__|${ORG_EMAIL:-admin@example.com}|g" "$KYMA_HOME/platform/.env"
         sed -i "s|__DB_ROOT_PASSWORD__|${DB_ROOT_PASSWORD}|g" "$KYMA_HOME/platform/.env"
         
-        # Sæt korrekt permissions på .env (den indeholder passwords!)
-        chmod 600 "$KYMA_HOME/platform/.env"
+        # Set permissions (640 allows group read for containers like PHP-FPM)
+        chmod 640 "$KYMA_HOME/platform/.env"
         chown "${KYMA_USER}:${KYMA_GROUP}" "$KYMA_HOME/platform/.env"
         
         log_success ".env fil oprettet fra template"
@@ -530,7 +530,7 @@ SETUP_TYPE=multi-tenant
 PLATFORM_VERSION=2.0.0
 ENVEOF
         
-        chmod 600 "$KYMA_HOME/platform/.env"
+        chmod 640 "$KYMA_HOME/platform/.env"
         chown "${KYMA_USER}:${KYMA_GROUP}" "$KYMA_HOME/platform/.env"
         
         log_success ".env fil oprettet (fallback mode)"
