@@ -346,6 +346,11 @@ setup_directory_structure() {
     mkdir -p "$KYMA_HOME/platform/traefik/dynamic"
     mkdir -p "$KYMA_HOME/platform/proftpd"
     
+    # Opret acme.json for Let's Encrypt (skal have chmod 600)
+    touch "$KYMA_HOME/platform/traefik/acme.json"
+    chmod 600 "$KYMA_HOME/platform/traefik/acme.json"
+    chown "${KYMA_USER}:${KYMA_GROUP}" "$KYMA_HOME/platform/traefik/acme.json"
+    
     log_success "Directory struktur oprettet"
     
     # Gem organization metadata
