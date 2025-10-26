@@ -40,7 +40,7 @@ log_step() { echo -e "\n${CYAN}━━━ $1 ━━━${NC}\n"; }
 # Konfiguration
 ################################################################################
 
-QUERY_ID="${1:-__QUERY_ID__}"
+QUERY_ID=__QUERY_ID__
 API_URL="https://app.kymacloud.com/api/v1/servers/init/"
 KYMA_USER="kymacloud"
 KYMA_GROUP="kymacloud"
