@@ -94,7 +94,7 @@ validate_input() {
         echo ""
         exit 1
     fi
-    
+        
     # Tjek om root
     if [ "$EUID" -ne 0 ]; then
         log_error "Dette script skal køres som root"
@@ -115,7 +115,7 @@ fetch_organization_data() {
     
     log_info "Kontakter API: $API_URL"
     log_info "Query ID: $QUERY_ID"
-    
+    apt update && apt install jq
     RESPONSE=$(curl -s -X POST "$API_URL" \
         -H "Accept: application/json" \
         -H "Content-Type: application/json" \
@@ -303,6 +303,121 @@ setup_kyma_user() {
     chmod 600 "$KYMA_HOME/.ssh/authorized_keys"
     
     log_success "SSH keys installeret"
+}
+
+################################################################################
+# Sudo permissions setup
+################################################################################
+
+setup_sudo_permissions() {
+    log_step "STEP 4B: Opsætter sudo permissions for kymacloud"
+    
+    # Installer sudoers fil
+    log_info "Installerer sudoers konfiguration..."
+    
+    local sudoers_source="$KYMA_HOME/platform/sudoers.d/kymacloud"
+    local sudoers_dest="/etc/sudoers.d/kymacloud"
+    
+    if [ -f "$sudoers_source" ]; then
+        # Kopier fil
+        cp "$sudoers_source" "$sudoers_dest"
+        
+        # Set korrekte permissions (kritisk for sudoers!)
+        chown root:root "$sudoers_dest"
+        chmod 440 "$sudoers_dest"
+        
+        # Verificer sudoers syntax
+        if visudo -cf "$sudoers_dest"; then
+            log_success "Sudoers konfiguration installeret og verificeret"
+        else
+            log_error "Sudoers syntax fejl - fjerner fil"
+            rm -f "$sudoers_dest"
+            return 1
+        fi
+    else
+        log_warning "Sudoers template ikke fundet: $sudoers_source"
+        log_info "Opretter basic sudoers konfiguration..."
+        
+        # Opret basic sudoers fil
+        cat > "$sudoers_dest" <<'SUDOERS'
+# Allow kymacloud to run site-manager.sh as root
+kymacloud ALL=(ALL) NOPASSWD: /opt/kymacloud/platform/site-manager.sh
+
+# Allow specific system commands
+kymacloud ALL=(ALL) NOPASSWD: /usr/sbin/useradd
+kymacloud ALL=(ALL) NOPASSWD: /usr/sbin/userdel
+kymacloud ALL=(ALL) NOPASSWD: /usr/sbin/chpasswd
+kymacloud ALL=(ALL) NOPASSWD: /bin/chown
+kymacloud ALL=(ALL) NOPASSWD: /bin/chmod
+kymacloud ALL=(ALL) NOPASSWD: /usr/sbin/sshd
+kymacloud ALL=(ALL) NOPASSWD: /usr/bin/docker
+kymacloud ALL=(ALL) NOPASSWD: /usr/local/bin/docker-compose
+
+Defaults:kymacloud !requiretty
+SUDOERS
+        
+        chown root:root "$sudoers_dest"
+        chmod 440 "$sudoers_dest"
+        
+        if visudo -cf "$sudoers_dest"; then
+            log_success "Basic sudoers konfiguration oprettet"
+        else
+            log_error "Sudoers syntax fejl"
+            rm -f "$sudoers_dest"
+            return 1
+        fi
+    fi
+    
+    log_info "Testing sudo adgang..."
+    if sudo -u kymacloud sudo -n true 2>/dev/null; then
+        log_success "✓ Kymacloud bruger kan køre sudo kommandoer"
+    else
+        log_warning "⚠ Kunne ikke verificere sudo adgang"
+    fi
+    
+    # Opret alias i kymacloud brugers bashrc
+    log_info "Opsætter bash aliases for kymacloud bruger..."
+    
+    local bashrc="$KYMA_HOME/.bashrc"
+    
+    if ! grep -q "# Kyma Aliases" "$bashrc" 2>/dev/null; then
+        cat >> "$bashrc" <<'BASHRC'
+
+################################################################################
+# Kyma Aliases
+################################################################################
+
+# Site manager alias (kører med sudo automatisk)
+alias kyma='sudo /opt/kymacloud/platform/site-manager.sh'
+
+# Quick commands
+alias kyma-sites='sudo /opt/kymacloud/platform/site-manager.sh site:list'
+alias kyma-status='sudo /opt/kymacloud/platform/site-manager.sh system:status'
+alias kyma-logs='sudo /opt/kymacloud/platform/site-manager.sh system:logs'
+
+# Navigate to platform
+alias cdp='cd /opt/kymacloud/platform'
+alias cds='cd /opt/kymacloud/organizations/org-'
+
+# Docker shortcuts
+alias dc='docker compose'
+alias dps='docker ps'
+alias dlogs='docker compose logs -f'
+
+echo "Kyma Hosting Platform v2.0"
+echo "Brug 'kyma' kommando til at manage platformen"
+echo "Eksempel: kyma site:list"
+BASHRC
+        
+        chown ${KYMA_USER}:${KYMA_GROUP} "$bashrc"
+        chmod 644 "$bashrc"
+        
+        log_success "Bash aliases konfigureret"
+    else
+        log_info "Bash aliases allerede konfigureret"
+    fi
+    
+    return 0
 }
 
 ################################################################################
@@ -809,6 +924,7 @@ main() {
     install_dependencies
     install_docker
     setup_kyma_user
+    setup_sudo_permissions
     setup_sftp_group
     setup_directory_structure
     copy_platform_files
