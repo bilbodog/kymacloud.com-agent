@@ -64,8 +64,9 @@ show_banner() {
     ║   ██║  ██╗   ██║   ██║ ╚═╝ ██║██║  ██║                  ║
     ║   ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝                  ║
     ║                                                           ║
-    ║              Hosting Platform v2.0                       ║
+    ║              Hosting Platform v2.1                       ║
     ║            Production Installation                       ║
+    ║          36 Unified Commands Available                   ║
     ║                                                           ║
     ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -340,7 +341,8 @@ setup_sudo_permissions() {
         
         # Opret basic sudoers fil
         cat > "$sudoers_dest" <<'SUDOERS'
-# Allow kymacloud to run site-manager.sh as root
+# Allow kymacloud to run site-manager.sh as root (updated path)
+kymacloud ALL=(ALL) NOPASSWD: /opt/kymacloud/platform/scripts/utilities/site-manager.sh
 kymacloud ALL=(ALL) NOPASSWD: /opt/kymacloud/platform/site-manager.sh
 
 # Allow specific system commands
@@ -388,12 +390,13 @@ SUDOERS
 ################################################################################
 
 # Site manager alias (kører med sudo automatisk)
-alias kyma='sudo /opt/kymacloud/platform/site-manager.sh'
+alias kyma='sudo /opt/kymacloud/platform/scripts/utilities/site-manager.sh'
 
 # Quick commands
-alias kyma-sites='sudo /opt/kymacloud/platform/site-manager.sh site:list'
-alias kyma-status='sudo /opt/kymacloud/platform/site-manager.sh system:status'
-alias kyma-logs='sudo /opt/kymacloud/platform/site-manager.sh system:logs'
+alias kyma-sites='sudo /opt/kymacloud/platform/scripts/utilities/site-manager.sh site:list'
+alias kyma-status='sudo /opt/kymacloud/platform/scripts/utilities/site-manager.sh system:status'
+alias kyma-logs='sudo /opt/kymacloud/platform/scripts/utilities/site-manager.sh system:logs'
+alias kyma-backup='sudo /opt/kymacloud/platform/scripts/utilities/site-manager.sh backup:all'
 
 # Navigate to platform
 alias cdp='cd /opt/kymacloud/platform'
@@ -404,9 +407,19 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.0"
-echo "Brug 'kyma' kommando til at manage platformen"
-echo "Eksempel: kyma site:list"
+echo "Kyma Hosting Platform v2.1"
+echo "═══════════════════════════════════════"
+echo "Unified Command System - 36 commands available!"
+echo "═══════════════════════════════════════"
+echo "Usage: kyma <category>:<action> [options]"
+echo ""
+echo "Examples:"
+echo "  kyma site:list              # List all sites"
+echo "  kyma credentials:show <domain>"
+echo "  kyma diagnose:site <domain>"
+echo "  kyma backup:all             # Backup everything"
+echo ""
+echo "Help: kyma --help"
 BASHRC
         
         chown ${KYMA_USER}:${KYMA_GROUP} "$bashrc"
@@ -475,7 +488,7 @@ setup_directory_structure() {
   "organization_name": "${ORG_NAME:-Unknown}",
   "email": "${ORG_EMAIL:-}",
   "created_at": "$(date -Iseconds)",
-  "platform_version": "2.0.0"
+  "platform_version": "2.1.0"
 }
 EOF
     
@@ -563,22 +576,42 @@ copy_platform_files() {
     chown -R ${KYMA_USER}:${KYMA_GROUP} "$KYMA_HOME"
     
     # Set executable permissions på scripts
-    chmod +x "$KYMA_HOME/platform/site-manager.sh" 2>/dev/null || true
-    find "$KYMA_HOME/platform" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    chmod +x "$KYMA_HOME/platform/scripts/utilities/site-manager.sh" 2>/dev/null || true
+    find "$KYMA_HOME/platform/scripts" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    find "$KYMA_HOME/platform/modules" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    find "$KYMA_HOME/platform/lib" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
     
     log_success "Permissions sat for ${KYMA_USER}:${KYMA_GROUP}"
     
     # Verificer kritiske filer
     local required_files=(
-        "$KYMA_HOME/platform/site-manager.sh"
+        "$KYMA_HOME/platform/scripts/utilities/site-manager.sh"
         "$KYMA_HOME/platform/lib/config.sh"
         "$KYMA_HOME/platform/docker-compose.yml"
     )
     
+    local required_modules=(
+        "$KYMA_HOME/platform/modules/site.sh"
+        "$KYMA_HOME/platform/modules/user.sh"
+        "$KYMA_HOME/platform/modules/database.sh"
+        "$KYMA_HOME/platform/modules/system.sh"
+        "$KYMA_HOME/platform/modules/credentials.sh"
+        "$KYMA_HOME/platform/modules/diagnostics.sh"
+        "$KYMA_HOME/platform/modules/backup.sh"
+    )
+    
+    log_info "Verificerer kritiske filer..."
     for file in "${required_files[@]}"; do
         if [ ! -f "$file" ]; then
             log_error "Kritisk fil mangler: $file"
             return 1
+        fi
+    done
+    
+    log_info "Verificerer module filer..."
+    for file in "${required_modules[@]}"; do
+        if [ ! -f "$file" ]; then
+            log_warning "Module mangler: $file (platformen kan have begrænset funktionalitet)"
         fi
     done
     
@@ -642,7 +675,7 @@ ORGANIZATION_NAME=${ORG_NAME:-Unknown}
 ORGANIZATION_EMAIL=${ORG_EMAIL:-admin@example.com}
 MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 SETUP_TYPE=multi-tenant
-PLATFORM_VERSION=2.0.0
+PLATFORM_VERSION=2.1.0
 ENVEOF
         
         chmod 640 "$KYMA_HOME/platform/.env"
@@ -716,13 +749,25 @@ SYSTEM USER:
 
 PLATFORM PATHS:
   Platform:         $KYMA_HOME/platform
+  Scripts:          $KYMA_HOME/platform/scripts
+  Modules:          $KYMA_HOME/platform/modules
   Sites:            $KYMA_HOME/organizations/org-${ORG_ID}/sites
   Backups:          $KYMA_HOME/organizations/org-${ORG_ID}/backups
   Logs:             $KYMA_HOME/organizations/org-${ORG_ID}/logs
 
 MANAGEMENT:
   SSH Login:        ssh ${KYMA_USER}@$(hostname -I | awk '{print $1}')
-  Management Tool:  cd $KYMA_HOME/platform && ./site-manager.sh
+  Unified Command:  kyma <category>:<action>
+  
+AVAILABLE COMMANDS (36 total):
+  Site:         kyma site:add|remove|list|info|backup|restore
+  Users:        kyma user:sftp:add|remove|list
+                kyma user:ftp:add|remove|list
+  Database:     kyma db:backup|restore|list
+  Credentials:  kyma credentials:show|sftp
+  Diagnostics:  kyma diagnose:ftp|sftp|site
+  Backup:       kyma backup:all|platform
+  System:       kyma system:start|stop|restart|status|verify|update
 
 ⚠️  VIGTIGT:
   - Database root password er i $KYMA_HOME/platform/.env
@@ -821,11 +866,12 @@ start_platform() {
     log_info "Venter på at services bliver healthy..."
     sleep 10
     
-    # Verificer services
+    # Verificer core services (not per-site PHP containers yet)
     local all_ok=true
-    local services=("traefik" "nginx" "php-fpm-82" "php-fpm-81" "mariadb")
+    local core_services=("traefik" "nginx" "mariadb")
     
-    for service in "${services[@]}"; do
+    log_info "Verificerer core services..."
+    for service in "${core_services[@]}"; do
         if docker ps --format '{{.Names}}' | grep -q "^${service}$"; then
             log_success "✓ $service kører"
         else
@@ -833,6 +879,15 @@ start_platform() {
             all_ok=false
         fi
     done
+    
+    # Check if any legacy shared PHP containers exist (from old installations)
+    log_info "Tjekker for PHP containers..."
+    if docker ps --format '{{.Names}}' | grep -q "php-fpm-"; then
+        local php_count=$(docker ps --format '{{.Names}}' | grep -c "php-fpm-" || true)
+        log_success "✓ $php_count PHP container(s) kører"
+    else
+        log_info "ℹ Ingen PHP containers endnu (oprettes per site)"
+    fi
     
     if [ "$all_ok" = "true" ]; then
         log_success "Alle services kører korrekt"
@@ -863,7 +918,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.0 er installeret!"
+    log_success "Kyma Hosting Platform v2.1 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
@@ -876,16 +931,23 @@ EOF
     echo ""
     
     echo "2. Tilføj dit første website:"
-    echo -e "   ${YELLOW}cd $KYMA_HOME/platform${NC}"
-    echo -e "   ${YELLOW}./site-manager.sh site:add example.com php-fpm-82 --template=wordpress${NC}"
+    echo -e "   ${YELLOW}kyma site:add example.com php-fpm-82 wordpress${NC}"
     echo ""
     
     echo "3. Se system status:"
-    echo -e "   ${YELLOW}./site-manager.sh system:status${NC}"
+    echo -e "   ${YELLOW}kyma system:status${NC}"
     echo ""
     
-    echo "4. Se platform configuration:"
-    echo -e "   ${YELLOW}cat $KYMA_HOME/platform/.env${NC}"
+    echo "4. Se alle tilgængelige kommandoer:"
+    echo -e "   ${YELLOW}kyma --help${NC}"
+    echo ""
+    
+    echo "5. Diagnosticer site efter oprettelse:"
+    echo -e "   ${YELLOW}kyma diagnose:site example.com${NC}"
+    echo ""
+    
+    echo "6. Se credentials for site:"
+    echo -e "   ${YELLOW}kyma credentials:show example.com${NC}"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
@@ -897,6 +959,14 @@ EOF
     echo "Platform Path:   $KYMA_HOME/platform"
     echo "Sites Path:      $KYMA_HOME/organizations/org-${ORG_ID}/sites"
     echo ""
+    echo "Platform Features:"
+    echo "  ✓ 36 unified commands via 'kyma' interface"
+    echo "  ✓ Per-site PHP containers (isolation & custom config)"
+    echo "  ✓ Built-in diagnostics (kyma diagnose:*)"
+    echo "  ✓ Comprehensive backup system (kyma backup:*)"
+    echo "  ✓ Credentials management (kyma credentials:*)"
+    echo "  ✓ JSON API support (--json flag)"
+    echo ""
     
     echo -e "${YELLOW}⚠️  BACKUP .env filen til et sikkert sted!${NC}"
     echo ""
@@ -904,8 +974,12 @@ EOF
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
     echo ""
     
-    echo "Dokumentation: https://docs.kymacloud.com"
-    echo "Support:       support@kymacloud.com"
+    echo "Quick Reference: cat $KYMA_HOME/platform/QUICK_REFERENCE.md"
+    echo "Full Docs:       cat $KYMA_HOME/platform/README.md"
+    echo "Command Guide:   cat $KYMA_HOME/platform/COMMAND_SYSTEM.md"
+    echo ""
+    echo "Dokumentation:   https://docs.kymacloud.com"
+    echo "Support:         support@kymacloud.com"
     echo ""
 }
 
