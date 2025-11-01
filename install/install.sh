@@ -64,7 +64,7 @@ show_banner() {
     ║   ██║  ██╗   ██║   ██║ ╚═╝ ██║██║  ██║                  ║
     ║   ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝                  ║
     ║                                                           ║
-    ║              Hosting Platform v2.1                       ║
+    ║              Hosting Platform v2.3.1                     ║
     ║            Production Installation                       ║
     ║          36 Unified Commands Available                   ║
     ║                                                           ║
@@ -407,7 +407,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.1"
+echo "Kyma Hosting Platform v2.3.1.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -488,7 +488,7 @@ setup_directory_structure() {
   "organization_name": "${ORG_NAME:-Unknown}",
   "email": "${ORG_EMAIL:-}",
   "created_at": "$(date -Iseconds)",
-  "platform_version": "2.1.0"
+  "platform_version": "2.3.1"
 }
 EOF
     
@@ -583,6 +583,40 @@ copy_platform_files() {
     
     log_success "Permissions sat for ${KYMA_USER}:${KYMA_GROUP}"
     
+    # Opret .version fil fra version.txt
+    if [ -f "$KYMA_HOME/platform/version.txt" ]; then
+        cp "$KYMA_HOME/platform/version.txt" "$KYMA_HOME/platform/.version"
+        log_info "Version fil oprettet: $(cat $KYMA_HOME/platform/.version)"
+    else
+        log_warning "version.txt ikke fundet - opretter default .version"
+        echo "2.3.0" > "$KYMA_HOME/platform/.version"
+    fi
+    
+    # Load pre-built PHP images if they exist
+    log_info "Tjekker for pre-built PHP images..."
+    if [ -d "$KYMA_HOME/platform/php-images" ]; then
+        local php_images=$(find "$KYMA_HOME/platform/php-images" -name "*.tar.gz" 2>/dev/null | wc -l)
+        if [ "$php_images" -gt 0 ]; then
+            log_info "Fandt $php_images PHP image archive(s) - loader dem..."
+            for image in "$KYMA_HOME/platform/php-images"/*.tar.gz; do
+                if [ -f "$image" ]; then
+                    local image_name=$(basename "$image")
+                    log_info "Loader: $image_name"
+                    if docker load -i "$image" 2>&1 | tee -a "$LOG_FILE"; then
+                        log_success "Loaded: $image_name"
+                    else
+                        log_warning "Kunne ikke loade: $image_name"
+                    fi
+                fi
+            done
+            log_success "PHP images loaded - sites vil starte hurtigt!"
+        else
+            log_info "Ingen PHP image archives fundet - sites vil bygge ved første brug"
+        fi
+    else
+        log_info "php-images directory ikke fundet - sites vil bygge ved første brug"
+    fi
+    
     # Verificer kritiske filer
     local required_files=(
         "$KYMA_HOME/platform/scripts/utilities/site-manager.sh"
@@ -675,7 +709,7 @@ ORGANIZATION_NAME=${ORG_NAME:-Unknown}
 ORGANIZATION_EMAIL=${ORG_EMAIL:-admin@example.com}
 MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 SETUP_TYPE=multi-tenant
-PLATFORM_VERSION=2.1.0
+PLATFORM_VERSION=2.3.1
 ENVEOF
         
         chmod 640 "$KYMA_HOME/platform/.env"
@@ -918,7 +952,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.1 er installeret!"
+    log_success "Kyma Hosting Platform v2.3.1.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
