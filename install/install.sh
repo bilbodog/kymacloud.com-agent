@@ -64,7 +64,7 @@ show_banner() {
     ║   ██║  ██╗   ██║   ██║ ╚═╝ ██║██║  ██║                  ║
     ║   ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝                  ║
     ║                                                           ║
-    ║              Hosting Platform v2.3.1                     ║
+    ║              Hosting Platform v2.4.0                     ║
     ║            Production Installation                       ║
     ║          36 Unified Commands Available                   ║
     ║                                                           ║
@@ -400,14 +400,14 @@ alias kyma-backup='sudo /opt/kymacloud/platform/scripts/utilities/site-manager.s
 
 # Navigate to platform
 alias cdp='cd /opt/kymacloud/platform'
-alias cds='cd /opt/kymacloud/organizations/org-'
+alias cds='cd /opt/kymacloud/organizations/'
 
 # Docker shortcuts
 alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.3.1.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
+echo "Kyma Hosting Platform v2.4.0.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -455,14 +455,14 @@ setup_sftp_group() {
 setup_directory_structure() {
     log_step "STEP 6: Opretter directory struktur"
     
-    log_info "Opretter organization directory: org-${ORG_ID}"
+    log_info "Opretter organization directory: ${ORG_ID}"
     
     # Hovedstruktur
-    mkdir -p "$KYMA_HOME/organizations/org-${ORG_ID}"
-    mkdir -p "$KYMA_HOME/organizations/org-${ORG_ID}/sites"
-    mkdir -p "$KYMA_HOME/organizations/org-${ORG_ID}/backups"
-    mkdir -p "$KYMA_HOME/organizations/org-${ORG_ID}/logs"
-    mkdir -p "$KYMA_HOME/organizations/org-${ORG_ID}/config"
+    mkdir -p "$KYMA_HOME/organizations/${ORG_ID}"
+    mkdir -p "$KYMA_HOME/organizations/${ORG_ID}/sites"
+    mkdir -p "$KYMA_HOME/organizations/${ORG_ID}/backups"
+    mkdir -p "$KYMA_HOME/organizations/${ORG_ID}/logs"
+    mkdir -p "$KYMA_HOME/organizations/${ORG_ID}/config"
     
     # Platform filer
     mkdir -p "$KYMA_HOME/platform"
@@ -482,13 +482,13 @@ setup_directory_structure() {
     log_success "Directory struktur oprettet"
     
     # Gem organization metadata
-    cat > "$KYMA_HOME/organizations/org-${ORG_ID}/metadata.json" <<EOF
+    cat > "$KYMA_HOME/organizations/${ORG_ID}/metadata.json" <<EOF
 {
   "organization_id": "$ORG_ID",
   "organization_name": "${ORG_NAME:-Unknown}",
   "email": "${ORG_EMAIL:-}",
   "created_at": "$(date -Iseconds)",
-  "platform_version": "2.3.1"
+  "platform_version": "2.4.0"
 }
 EOF
     
@@ -653,9 +653,9 @@ copy_platform_files() {
     log_info "Verificerer permissions..."
     local important_dirs=(
         "$KYMA_HOME/platform"
-        "$KYMA_HOME/organizations/org-${ORG_ID}"
-        "$KYMA_HOME/organizations/org-${ORG_ID}/sites"
-        "$KYMA_HOME/organizations/org-${ORG_ID}/backups"
+        "$KYMA_HOME/organizations/${ORG_ID}"
+        "$KYMA_HOME/organizations/${ORG_ID}/sites"
+        "$KYMA_HOME/organizations/${ORG_ID}/backups"
     )
     
     for dir in "${important_dirs[@]}"; do
@@ -709,7 +709,7 @@ ORGANIZATION_NAME=${ORG_NAME:-Unknown}
 ORGANIZATION_EMAIL=${ORG_EMAIL:-admin@example.com}
 MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 SETUP_TYPE=multi-tenant
-PLATFORM_VERSION=2.3.1
+PLATFORM_VERSION=2.4.0
 ENVEOF
         
         chmod 640 "$KYMA_HOME/platform/.env"
@@ -739,7 +739,7 @@ ENVEOF
         fi
         
         # Verificer at den korrekte path eksisterer
-        if ! grep -q "organizations/org-${ORG_ID}/sites" "$KYMA_HOME/platform/docker-compose.yml"; then
+        if ! grep -q "organizations/${ORG_ID}/sites" "$KYMA_HOME/platform/docker-compose.yml"; then
             log_warning "docker-compose.yml indeholder ikke forventet path: org-${ORG_ID}"
         fi
         
@@ -756,7 +756,7 @@ ENVEOF
     fi
     
     # Gem admin credentials
-    cat > "$KYMA_HOME/organizations/org-${ORG_ID}/config/README.txt" <<EOF
+    cat > "$KYMA_HOME/organizations/${ORG_ID}/config/README.txt" <<EOF
 ═══════════════════════════════════════════════════════════════
  KYMA HOSTING PLATFORM - CONFIGURATION
 ═══════════════════════════════════════════════════════════════
@@ -785,9 +785,9 @@ PLATFORM PATHS:
   Platform:         $KYMA_HOME/platform
   Scripts:          $KYMA_HOME/platform/scripts
   Modules:          $KYMA_HOME/platform/modules
-  Sites:            $KYMA_HOME/organizations/org-${ORG_ID}/sites
-  Backups:          $KYMA_HOME/organizations/org-${ORG_ID}/backups
-  Logs:             $KYMA_HOME/organizations/org-${ORG_ID}/logs
+  Sites:            $KYMA_HOME/organizations/${ORG_ID}/sites
+  Backups:          $KYMA_HOME/organizations/${ORG_ID}/backups
+  Logs:             $KYMA_HOME/organizations/${ORG_ID}/logs
 
 MANAGEMENT:
   SSH Login:        ssh ${KYMA_USER}@$(hostname -I | awk '{print $1}')
@@ -812,8 +812,8 @@ AVAILABLE COMMANDS (36 total):
 ═══════════════════════════════════════════════════════════════
 EOF
     
-    chmod 644 "$KYMA_HOME/organizations/org-${ORG_ID}/config/README.txt"
-    chown ${KYMA_USER}:${KYMA_GROUP} "$KYMA_HOME/organizations/org-${ORG_ID}/config/README.txt"
+    chmod 644 "$KYMA_HOME/organizations/${ORG_ID}/config/README.txt"
+    chown ${KYMA_USER}:${KYMA_GROUP} "$KYMA_HOME/organizations/${ORG_ID}/config/README.txt"
     
     log_success "Platform README oprettet"
 }
@@ -952,7 +952,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.3.1.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
+    log_success "Kyma Hosting Platform v2.4.0.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
@@ -991,7 +991,7 @@ EOF
     
     echo "Organization ID: ${ORG_ID}"
     echo "Platform Path:   $KYMA_HOME/platform"
-    echo "Sites Path:      $KYMA_HOME/organizations/org-${ORG_ID}/sites"
+    echo "Sites Path:      $KYMA_HOME/organizations/${ORG_ID}/sites"
     echo ""
     echo "Platform Features:"
     echo "  ✓ 36 unified commands via 'kyma' interface"
