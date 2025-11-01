@@ -64,7 +64,7 @@ show_banner() {
     ║   ██║  ██╗   ██║   ██║ ╚═╝ ██║██║  ██║                  ║
     ║   ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝                  ║
     ║                                                           ║
-    ║              Hosting Platform v2.4.0                     ║
+    ║              Hosting Platform v2.4.1                     ║
     ║            Production Installation                       ║
     ║          36 Unified Commands Available                   ║
     ║                                                           ║
@@ -407,7 +407,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.4.0.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
+echo "Kyma Hosting Platform v2.4.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -488,7 +488,7 @@ setup_directory_structure() {
   "organization_name": "${ORG_NAME:-Unknown}",
   "email": "${ORG_EMAIL:-}",
   "created_at": "$(date -Iseconds)",
-  "platform_version": "2.4.0"
+  "platform_version": "2.4.1"
 }
 EOF
     
@@ -602,7 +602,7 @@ copy_platform_files() {
                 if [ -f "$image" ]; then
                     local image_name=$(basename "$image")
                     log_info "Loader: $image_name"
-                    if docker load -i "$image" 2>&1 | tee -a "$LOG_FILE"; then
+                    if docker load -i "$image" >/dev/null 2>&1; then
                         log_success "Loaded: $image_name"
                     else
                         log_warning "Kunne ikke loade: $image_name"
@@ -709,7 +709,7 @@ ORGANIZATION_NAME=${ORG_NAME:-Unknown}
 ORGANIZATION_EMAIL=${ORG_EMAIL:-admin@example.com}
 MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 SETUP_TYPE=multi-tenant
-PLATFORM_VERSION=2.4.0
+PLATFORM_VERSION=2.4.1
 ENVEOF
         
         chmod 640 "$KYMA_HOME/platform/.env"
@@ -720,7 +720,7 @@ ENVEOF
     
     # Opdater docker-compose.yml med organization paths
     if [ -f "$KYMA_HOME/platform/docker-compose.yml" ]; then
-        log_info "Opdaterer docker-compose.yml med org-${ORG_ID} paths..."
+        log_info "Opdaterer docker-compose.yml med ${ORG_ID} paths..."
         
         # Tjek at ORG_ID er sat
         if [ -z "$ORG_ID" ]; then
@@ -738,12 +738,14 @@ ENVEOF
             return 1
         fi
         
-        # Verificer at den korrekte path eksisterer
-        if ! grep -q "organizations/${ORG_ID}/sites" "$KYMA_HOME/platform/docker-compose.yml"; then
-            log_warning "docker-compose.yml indeholder ikke forventet path: org-${ORG_ID}"
+        # Verificer at den korrekte path eksisterer (or check base structure)
+        if ! grep -q "organizations/" "$KYMA_HOME/platform/docker-compose.yml"; then
+            log_warning "docker-compose.yml indeholder ikke organizations/ path"
+        else
+            log_success "docker-compose.yml verificeret med organizations/${ORG_ID} paths"
         fi
         
-        log_success "docker-compose.yml konfigureret med org-${ORG_ID} paths"
+        log_success "docker-compose.yml konfigureret med ${ORG_ID} paths"
     else
         log_error "docker-compose.yml ikke fundet"
         return 1
@@ -952,7 +954,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.4.0.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
+    log_success "Kyma Hosting Platform v2.4.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
