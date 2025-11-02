@@ -103,11 +103,7 @@ validate_input() {
         exit 1
     fi
 
-    curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
-   --header 'Content-Type: application/json' \
-   --data '{
-    "identifier": "'$QUERY_ID'"
-}'
+
     if [ $? -ne 0 ]; then
         log_error "API kald fejlede"
         echo "Response: $RESPONSE"
@@ -130,6 +126,11 @@ fetch_organization_data() {
         -H "Accept: application/json" \
         -H "Content-Type: application/json" \
         -d "{\"id\": \"$QUERY_ID\"}" 2>&1)
+    curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
+   --header 'Content-Type: application/json' \
+   --data '{
+    "identifier": "'$QUERY_ID'"
+}'
     
     if [ $? -ne 0 ] || [ -z "$RESPONSE" ]; then
         log_error "API kald fejlede"
@@ -452,7 +453,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.7.4.4.3.2.1"
+echo "Kyma Hosting Platform v2.7.6.6.5.4.3.2.1"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -1038,7 +1039,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.7.4.4.3.2.1 er installeret!"
+    log_success "Kyma Hosting Platform v2.7.6.6.5.4.3.2.1 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
