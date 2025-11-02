@@ -1164,21 +1164,21 @@ EOF
     # If CPU parsing fails, default to 0
     [ -z "$used_cpu" ] && used_cpu="0"
     
-    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
 --header 'Content-Type: application/json' \
---data '{
-    "identifier": '$QUERY_ID',
-    "status_description": "Installation completed",
-    "host": {
-        "total_disk": '$total_disk_mb',
-        "load_average": '$load_avg',
-        "uptime": "'"$uptime_str"'",
-        "total_memory": '$total_memory_mb',
-        "used_cpu": '$used_cpu',
-        "used_disk": '$used_disk_mb',
-        "used_memory": '$used_memory_mb'
+--data "{
+    \"identifier\": \"$QUERY_ID\",
+    \"status_description\": \"Installation completed\",
+    \"host\": {
+        \"total_disk\": $total_disk_mb,
+        \"load_average\": $load_avg,
+        \"uptime\": \"$uptime_str\",
+        \"total_memory\": $total_memory_mb,
+        \"used_cpu\": $used_cpu,
+        \"used_disk\": $used_disk_mb,
+        \"used_memory\": $used_memory_mb
     }
-}'
+}"
     return 0
 }
 
