@@ -165,13 +165,13 @@ fetch_organization_data() {
 }
 
 ################################################################################
-# Notify deploy - Called after user is set up
+# Notify deploy - Called immediately after SSH key is fetched to whitelist IP
 ################################################################################
 
 notify_deploy() {
-    log_step "STEP 3: Notifying panel - server ready for SSH"
+    log_step "STEP 2: Whitelisting IP and notifying panel"
     
-    log_info "Calling deploy endpoint..."
+    log_info "Calling deploy endpoint to whitelist IP..."
     
     curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
    --header 'Content-Type: application/json' \
@@ -182,27 +182,27 @@ notify_deploy() {
     if [ $? -ne 0 ]; then
         log_warning "Deploy notification fejlede, men fortsætter installation"
     else
-        log_success "Panel notified - SSH connection should now work"
+        log_success "IP whitelisted - all subsequent API calls will now work"
     fi
     
     curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "3",
-    "status_progress_end": "10",
-    "status_description": "SSH access configured, installing dependencies",
-    "status": "Deplyoing"
+    "status_progress_start": "1",
+    "status_progress_end": "13",
+    "status_description": "IP whitelisted, starting installation",
+    "status": "Deploying"
 }'
     return 0
 }
 
 ################################################################################
-# Kyma bruger setup - MOVED TO STEP 2 (before deploy notification)
+# Kyma bruger setup
 ################################################################################
 
 setup_kyma_user() {
-    log_step "STEP 2: Opretter Kyma bruger med SSH adgang"
+    log_step "STEP 3: Opretter Kyma bruger med SSH adgang"
     
     # Opret gruppe
     if ! getent group "$KYMA_GROUP" > /dev/null 2>&1; then
@@ -253,9 +253,9 @@ setup_kyma_user() {
 --data '{
     "identifier": "'$QUERY_ID'",
     "status_progress_start": "2",
-    "status_progress_end": "10",
+    "status_progress_end": "13",
     "status_description": "Kymacloud user and SSH configured",
-    "status": "Deplyoing"
+    "status": "Deploying"
 }'
 }
 
@@ -327,10 +327,10 @@ install_dependencies() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "4",
-    "status_progress_end": "10",
+    "status_progress_start": "3",
+    "status_progress_end": "13",
     "status_description": "Installing dependencies",
-    "status": "Deplyoing"
+    "status": "Deploying"
 }'
     return 0
 }
@@ -369,13 +369,13 @@ install_docker() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "5",
-    "status_progress_end": "10",
+    "status_progress_start": "4",
+    "status_progress_end": "13",
     "status_description": "Installing Docker",
-    "status": "Deplyoing"
+    "status": "Deploying"
 }'
-    return 0
     rm -f /tmp/get-docker.sh
+    return 0
 }
 
 ################################################################################
@@ -389,6 +389,15 @@ add_user_to_docker() {
     usermod -aG docker "$KYMA_USER"
     log_success "Bruger tilføjet til docker gruppe"
     
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "5",
+    "status_progress_end": "13",
+    "status_description": "Configuring Docker permissions",
+    "status": "Deploying"
+}'
     return 0
 }
 
@@ -536,10 +545,10 @@ setup_sftp_group() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "8",
-    "status_progress_end": "10",
+    "status_progress_start": "6",
+    "status_progress_end": "13",
     "status_description": "Setting up SFTP group",
-    "status": "Deplyoing"
+    "status": "Deploying"
 }'
     return 0
 }
@@ -593,10 +602,10 @@ EOF
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "9",
-    "status_progress_end": "10",
+    "status_progress_start": "7",
+    "status_progress_end": "13",
     "status_description": "Setting up directory structure",
-    "status": "Deplyoing"
+    "status": "Deploying"
 }'
     return 0
 }
@@ -775,10 +784,10 @@ copy_platform_files() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "10",
+    "status_progress_start": "8",
     "status_progress_end": "13",
     "status_description": "Setting up Platform files",
-    "status": "Deplyoing"
+    "status": "Deploying"
 }'
     return 0
 }
@@ -933,6 +942,16 @@ EOF
     chown ${KYMA_USER}:${KYMA_GROUP} "$KYMA_HOME/organizations/${ORG_ID}/config/README.txt"
     
     log_success "Platform README oprettet"
+    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "9",
+    "status_progress_end": "13",
+    "status_description": "Generating configuration files",
+    "status": "Deploying"
+}'
 }
 
 ################################################################################
@@ -974,10 +993,10 @@ setup_firewall() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "12",
+    "status_progress_start": "10",
     "status_progress_end": "13",
     "status_description": "Setting up firewall",
-    "status": "Deplyoing"
+    "status": "Deploying"
 }'
     return 0
 }
@@ -1052,10 +1071,24 @@ start_platform() {
     
     if [ "$all_ok" = "true" ]; then
         log_success "Alle services kører korrekt"
-        return 0
     else
         log_warning "Nogle services kører ikke - tjek med: docker compose ps"
         log_info "Se fuld log: /tmp/docker-compose-up.log"
+    fi
+    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "11",
+    "status_progress_end": "13",
+    "status_description": "Platform started and running",
+    "status": "Deploying"
+}'
+    
+    if [ "$all_ok" = "true" ]; then
+        return 0
+    else
         return 1
     fi
 }
@@ -1066,6 +1099,17 @@ start_platform() {
 
 show_completion() {
     local server_ip=$(hostname -I | awk '{print $1}')
+    
+    # Report progress before showing completion banner
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "12",
+    "status_progress_end": "13",
+    "status_description": "Finalizing installation",
+    "status": "Deploying"
+}'
     
     echo ""
     echo -e "${GREEN}"
@@ -1149,7 +1193,7 @@ EOF
     "status_progress_start": "13",
     "status_progress_end": "13",
     "status_description": "Installation completed",
-    "status": "Deplyoing"
+    "status": "Deployed"
 }'
 
     # Gather real system metrics
@@ -1192,16 +1236,16 @@ main() {
     # Pre-flight checks
     validate_input
     
-    # Installation steps (reorganized for SSH access first)
+    # Installation steps (reorganized to whitelist IP first)
     # STEP 1: Get organization data and SSH key from API
     fetch_organization_data
     
-    # STEP 2: Setup kymacloud user with SSH key (BEFORE deploy notification)
-    # This ensures the panel can SSH back immediately
-    setup_kyma_user
-    
-    # STEP 3: Notify panel that server is ready for SSH connection
+    # STEP 2: Notify panel immediately to whitelist IP (CRITICAL: must be first API call)
+    # This whitelists our IP so all subsequent heartbeat calls work
     notify_deploy
+    
+    # STEP 3: Setup kymacloud user with SSH key
+    setup_kyma_user
     
     # STEP 4-13: Continue with rest of installation
     install_dependencies
