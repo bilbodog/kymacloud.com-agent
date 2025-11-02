@@ -451,7 +451,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.6.9.9.8.7.6.5.4.3.2.2.1.1.0.0.9.9.8.8.7.7.6.6.5.4.3.3.2.2.1.1.0--with-php-images.1--with-php-images--with-php-images.0.0.0...4.4.3.3.3.2.2.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
+echo "Kyma Hosting Platform v2.7.0.0.9.8.7.6.5.4.3.2.2.1.1.0.0.9.9.8.8.7.7.6.6.5.4.3.3.2.2.1.1.0--with-php-images.1--with-php-images--with-php-images.0.0.0...4.4.3.3.3.2.2.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -1037,7 +1037,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.6.9.9.8.7.6.5.4.3.2.2.1.1.0.0.9.9.8.8.7.7.6.6.5.4.3.3.2.2.1.1.0--with-php-images.1--with-php-images--with-php-images.0.0.0...4.4.3.3.3.2.2.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
+    log_success "Kyma Hosting Platform v2.7.0.0.9.8.7.6.5.4.3.2.2.1.1.0.0.9.9.8.8.7.7.6.6.5.4.3.3.2.2.1.1.0--with-php-images.1--with-php-images--with-php-images.0.0.0...4.4.3.3.3.2.2.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
