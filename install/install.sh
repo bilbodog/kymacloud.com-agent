@@ -126,11 +126,6 @@ fetch_organization_data() {
         -H "Accept: application/json" \
         -H "Content-Type: application/json" \
         -d "{\"id\": \"$QUERY_ID\"}" 2>&1)
-    curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
-   --header 'Content-Type: application/json' \
-   --data '{
-    "identifier": "'$QUERY_ID'"
-}'
     
     if [ $? -ne 0 ] || [ -z "$RESPONSE" ]; then
         log_error "API kald fejlede"
@@ -165,16 +160,112 @@ fetch_organization_data() {
     log_info "SSH Key: ${SSH_KEY_RAW:0:50}..."
     [ -n "$ORG_NAME" ] && log_info "Organization: $ORG_NAME" || true
     [ -n "$ORG_EMAIL" ] && log_info "Email: $ORG_EMAIL" || true
+    
     curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
     "status_progress_start": "1",
     "status_progress_end": "10",
-    "status_description": "Installing dependencies",
+    "status_description": "Fetching organization data",
     "status": "Deplyoing"
 }'
     return 0
+}
+
+################################################################################
+# Notify deploy - Called after user is set up
+################################################################################
+
+notify_deploy() {
+    log_step "STEP 3: Notifying panel - server ready for SSH"
+    
+    log_info "Calling deploy endpoint..."
+    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
+   --header 'Content-Type: application/json' \
+   --data '{
+    "identifier": "'$QUERY_ID'"
+}'
+    
+    if [ $? -ne 0 ]; then
+        log_warning "Deploy notification fejlede, men fortsætter installation"
+    else
+        log_success "Panel notified - SSH connection should now work"
+    fi
+    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "3",
+    "status_progress_end": "10",
+    "status_description": "SSH access configured, installing dependencies",
+    "status": "Deplyoing"
+}'
+    return 0
+}
+
+################################################################################
+# Kyma bruger setup - MOVED TO STEP 2 (before deploy notification)
+################################################################################
+
+setup_kyma_user() {
+    log_step "STEP 2: Opretter Kyma bruger med SSH adgang"
+    
+    # Opret gruppe
+    if ! getent group "$KYMA_GROUP" > /dev/null 2>&1; then
+        groupadd -g $KYMA_GID "$KYMA_GROUP"
+        log_success "Gruppe oprettet: $KYMA_GROUP (GID: $KYMA_GID)"
+    else
+        log_info "Gruppe eksisterer allerede: $KYMA_GROUP"
+    fi
+    
+    # Opret bruger
+    if ! id "$KYMA_USER" > /dev/null 2>&1; then
+        useradd \
+            -m \
+            -d "$KYMA_HOME" \
+            -s /bin/bash \
+            -g "$KYMA_GROUP" \
+            -u $KYMA_UID \
+            -c "Kyma Hosting Platform Service User" \
+            "$KYMA_USER"
+        
+        log_success "Bruger oprettet: $KYMA_USER (UID: $KYMA_UID)"
+    else
+        log_info "Bruger eksisterer allerede: $KYMA_USER"
+    fi
+    
+    # Setup SSH - CRITICAL: This must work for panel to connect
+    log_info "Opsætter SSH keys..."
+    mkdir -p "$KYMA_HOME/.ssh"
+    echo "$SSH_KEY_FORMATTED" > "$KYMA_HOME/.ssh/authorized_keys"
+    
+    chown -R ${KYMA_USER}:${KYMA_GROUP} "$KYMA_HOME/.ssh"
+    chmod 700 "$KYMA_HOME/.ssh"
+    chmod 600 "$KYMA_HOME/.ssh/authorized_keys"
+    
+    log_success "SSH keys installeret - panel kan nu forbinde"
+    
+    # Verify SSH setup
+    if [ -f "$KYMA_HOME/.ssh/authorized_keys" ]; then
+        local key_count=$(wc -l < "$KYMA_HOME/.ssh/authorized_keys")
+        log_info "✓ Authorized keys fil oprettet ($key_count key(s))"
+    else
+        log_error "SSH keys fil kunne ikke oprettes!"
+        return 1
+    fi
+    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "2",
+    "status_progress_end": "10",
+    "status_description": "Kymacloud user and SSH configured",
+    "status": "Deplyoing"
+}'
 }
 
 ################################################################################
@@ -182,7 +273,7 @@ fetch_organization_data() {
 ################################################################################
 
 install_dependencies() {
-    log_step "STEP 2: Installerer system dependencies"
+    log_step "STEP 4: Installerer system dependencies"
     
     # Detect OS
     if [ -f /etc/os-release ]; then
@@ -245,7 +336,7 @@ install_dependencies() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "2",
+    "status_progress_start": "4",
     "status_progress_end": "10",
     "status_description": "Installing dependencies",
     "status": "Deplyoing"
@@ -258,7 +349,7 @@ install_dependencies() {
 ################################################################################
 
 install_docker() {
-    log_step "STEP 3: Installerer Docker"
+    log_step "STEP 5: Installerer Docker"
     
     if command -v docker &> /dev/null; then
         DOCKER_VERSION=$(docker --version | awk '{print $3}' | sed 's/,//')
@@ -287,7 +378,7 @@ install_docker() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "3",
+    "status_progress_start": "5",
     "status_progress_end": "10",
     "status_description": "Installing Docker",
     "status": "Deplyoing"
@@ -297,59 +388,17 @@ install_docker() {
 }
 
 ################################################################################
-# Kyma bruger setup
+# Add user to docker group - Called after Docker is installed
 ################################################################################
 
-setup_kyma_user() {
-    log_step "STEP 4: Opretter Kyma bruger og gruppe"
-    
-    # Opret gruppe
-    if ! getent group "$KYMA_GROUP" > /dev/null 2>&1; then
-        groupadd -g $KYMA_GID "$KYMA_GROUP"
-        log_success "Gruppe oprettet: $KYMA_GROUP (GID: $KYMA_GID)"
-    else
-        log_info "Gruppe eksisterer allerede: $KYMA_GROUP"
-    fi
-    
-    # Opret bruger
-    if ! id "$KYMA_USER" > /dev/null 2>&1; then
-        useradd \
-            -m \
-            -d "$KYMA_HOME" \
-            -s /bin/bash \
-            -g "$KYMA_GROUP" \
-            -u $KYMA_UID \
-            -c "Kyma Hosting Platform Service User" \
-            "$KYMA_USER"
-        
-        log_success "Bruger oprettet: $KYMA_USER (UID: $KYMA_UID)"
-    else
-        log_info "Bruger eksisterer allerede: $KYMA_USER"
-    fi
+add_user_to_docker() {
+    log_step "STEP 6: Tilføjer kymacloud til docker gruppe"
     
     # Tilføj til docker gruppe
     usermod -aG docker "$KYMA_USER"
     log_success "Bruger tilføjet til docker gruppe"
     
-    # Setup SSH
-    log_info "Opsætter SSH keys..."
-    mkdir -p "$KYMA_HOME/.ssh"
-    echo "$SSH_KEY_FORMATTED" > "$KYMA_HOME/.ssh/authorized_keys"
-    
-    chown -R ${KYMA_USER}:${KYMA_GROUP} "$KYMA_HOME/.ssh"
-    chmod 700 "$KYMA_HOME/.ssh"
-    chmod 600 "$KYMA_HOME/.ssh/authorized_keys"
-    
-    log_success "SSH keys installeret"
-    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
---header 'Content-Type: application/json' \
---data '{
-    "identifier": "'$QUERY_ID'",
-    "status_progress_start": "4",
-    "status_progress_end": "10",
-    "status_description": "Setting up Kyma user and group",
-    "status": "Deplyoing"
-}'
+    return 0
 }
 
 ################################################################################
@@ -357,7 +406,7 @@ setup_kyma_user() {
 ################################################################################
 
 setup_sudo_permissions() {
-    log_step "STEP 4B: Opsætter sudo permissions for kymacloud"
+    log_step "STEP 7: Opsætter sudo permissions for kymacloud"
     
     # Installer sudoers fil
     log_info "Installerer sudoers konfiguration..."
@@ -484,7 +533,7 @@ BASHRC
 ################################################################################
 
 setup_sftp_group() {
-    log_step "STEP 5: Opretter SFTP gruppe"
+    log_step "STEP 8: Opretter SFTP gruppe"
     
     if ! getent group "sftpusers" > /dev/null 2>&1; then
         groupadd -g 5000 sftpusers
@@ -496,9 +545,9 @@ setup_sftp_group() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "5",
+    "status_progress_start": "8",
     "status_progress_end": "10",
-    "status_description": "Setting up SFTP group + users + directories",
+    "status_description": "Setting up SFTP group",
     "status": "Deplyoing"
 }'
     return 0
@@ -509,7 +558,7 @@ setup_sftp_group() {
 ################################################################################
 
 setup_directory_structure() {
-    log_step "STEP 6: Opretter directory struktur"
+    log_step "STEP 9: Opretter directory struktur"
     
     log_info "Opretter organization directory: ${ORG_ID}"
     
@@ -553,7 +602,7 @@ EOF
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "6",
+    "status_progress_start": "9",
     "status_progress_end": "10",
     "status_description": "Setting up directory structure",
     "status": "Deplyoing"
@@ -566,7 +615,7 @@ EOF
 ################################################################################
 
 copy_platform_files() {
-    log_step "STEP 7: Downloader platform filer"
+    log_step "STEP 10: Downloader platform filer"
     
     local PLATFORM_RELEASE_URL="https://kymoso2.vyprojects.org/releases/production/rel.zip"
     local TEMP_DIR="/tmp/kyma-platform-$$"
@@ -735,8 +784,8 @@ copy_platform_files() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "7",
-    "status_progress_end": "10",
+    "status_progress_start": "10",
+    "status_progress_end": "13",
     "status_description": "Setting up Platform files",
     "status": "Deplyoing"
 }'
@@ -748,7 +797,7 @@ copy_platform_files() {
 ################################################################################
 
 generate_configuration() {
-    log_step "STEP 8: Genererer konfiguration"
+    log_step "STEP 11: Genererer konfiguration"
     
     # Generer stærkt database password
     DB_ROOT_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
@@ -900,7 +949,7 @@ EOF
 ################################################################################
 
 setup_firewall() {
-    log_step "STEP 9: Konfigurerer firewall"
+    log_step "STEP 12: Konfigurerer firewall"
     
     if command -v ufw &> /dev/null; then
         log_info "Konfigurerer UFW..."
@@ -934,8 +983,8 @@ setup_firewall() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "9",
-    "status_progress_end": "10",
+    "status_progress_start": "12",
+    "status_progress_end": "13",
     "status_description": "Setting up firewall",
     "status": "Deplyoing"
 }'
@@ -947,7 +996,7 @@ setup_firewall() {
 ################################################################################
 
 start_platform() {
-    log_step "STEP 10: Starter Hosting Platform"
+    log_step "STEP 13: Starter Hosting Platform"
     
     log_info "Skifter til kymacloud bruger..."
     
@@ -1106,9 +1155,9 @@ EOF
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "10",
-    "status_progress_end": "10",
-    "status_description": "Showing completion",
+    "status_progress_start": "13",
+    "status_progress_end": "13",
+    "status_description": "Installation completed",
     "status": "Deplyoing"
 }'
 
@@ -1148,15 +1197,25 @@ EOF
 
 main() {
     show_banner
-    install_dependencies
-    install_docker
-    setup_kyma_user
+    
     # Pre-flight checks
     validate_input
     
-    # Installation steps
+    # Installation steps (reorganized for SSH access first)
+    # STEP 1: Get organization data and SSH key from API
     fetch_organization_data
-  
+    
+    # STEP 2: Setup kymacloud user with SSH key (BEFORE deploy notification)
+    # This ensures the panel can SSH back immediately
+    setup_kyma_user
+    
+    # STEP 3: Notify panel that server is ready for SSH connection
+    notify_deploy
+    
+    # STEP 4-13: Continue with rest of installation
+    install_dependencies
+    install_docker
+    add_user_to_docker
     setup_sudo_permissions
     setup_sftp_group
     setup_directory_structure
