@@ -1267,6 +1267,6 @@ main() {
     exit 0
 }
 
-# Kør installation
+# Kør installations
 main "$@"
 
