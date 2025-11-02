@@ -165,13 +165,13 @@ fetch_organization_data() {
 }
 
 ################################################################################
-# Notify deploy - Called immediately after SSH key is fetched to whitelist IP
+# Notify deploy - Called after user is created so panel can SSH back
 ################################################################################
 
 notify_deploy() {
-    log_step "STEP 2: Whitelisting IP and notifying panel"
+    log_step "STEP 3: Notifying panel - server ready for SSH connection"
     
-    log_info "Calling deploy endpoint to whitelist IP..."
+    log_info "Calling deploy endpoint (panel will SSH back to verify)..."
     
     curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
    --header 'Content-Type: application/json' \
@@ -182,16 +182,16 @@ notify_deploy() {
     if [ $? -ne 0 ]; then
         log_warning "Deploy notification fejlede, men fortsætter installation"
     else
-        log_success "IP whitelisted - all subsequent API calls will now work"
+        log_success "Panel notified - SSH verification complete, IP whitelisted"
     fi
     
     curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "1",
+    "status_progress_start": "2",
     "status_progress_end": "13",
-    "status_description": "IP whitelisted, starting installation",
+    "status_description": "SSH verified and IP whitelisted",
     "status": "Deploying"
 }'
     return 0
@@ -202,7 +202,7 @@ notify_deploy() {
 ################################################################################
 
 setup_kyma_user() {
-    log_step "STEP 3: Opretter Kyma bruger med SSH adgang"
+    log_step "STEP 2: Opretter Kyma bruger med SSH adgang"
     
     # Opret gruppe
     if ! getent group "$KYMA_GROUP" > /dev/null 2>&1; then
@@ -252,7 +252,7 @@ setup_kyma_user() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "2",
+    "status_progress_start": "1",
     "status_progress_end": "13",
     "status_description": "Kymacloud user and SSH configured",
     "status": "Deploying"
@@ -1236,16 +1236,17 @@ main() {
     # Pre-flight checks
     validate_input
     
-    # Installation steps (reorganized to whitelist IP first)
+    # Installation steps (reorganized for SSH verification)
     # STEP 1: Get organization data and SSH key from API
     fetch_organization_data
     
-    # STEP 2: Notify panel immediately to whitelist IP (CRITICAL: must be first API call)
-    # This whitelists our IP so all subsequent heartbeat calls work
-    notify_deploy
-    
-    # STEP 3: Setup kymacloud user with SSH key
+    # STEP 2: Setup kymacloud user with SSH key (MUST be before deploy notification)
+    # This ensures the panel can SSH back to verify connection
     setup_kyma_user
+    
+    # STEP 3: Notify panel that server is ready (panel will SSH back to verify and whitelist IP)
+    # This MUST come after user setup so the SSH connection works
+    notify_deploy
     
     # STEP 4-13: Continue with rest of installation
     install_dependencies
