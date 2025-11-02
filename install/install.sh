@@ -493,7 +493,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.7.7.7.6.5.4.3.2.1"
+echo "Kyma Hosting Platform v2.7.8.8.7.6.5.4.3.2.1"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -1079,7 +1079,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.7.7.7.6.5.4.3.2.1 er installeret!"
+    log_success "Kyma Hosting Platform v2.7.8.8.7.6.5.4.3.2.1 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
@@ -1167,7 +1167,7 @@ EOF
     curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
 --header 'Content-Type: application/json' \
 --data '{
-    "identifier": "'$QUERY_ID'",
+    "identifier": '$QUERY_ID',
     "status_description": "Installation completed",
     "host": {
         "total_disk": '$total_disk_mb',
