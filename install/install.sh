@@ -102,10 +102,11 @@ validate_input() {
         echo "Kør med: sudo bash kyma-install.sh $QUERY_ID"
         exit 1
     fi
+
     curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
    --header 'Content-Type: application/json' \
    --data '{
-    "identifier": "'$QUERY_ID-1'"
+    "identifier": "'$QUERY_ID'"
 }'
     if [ $? -ne 0 ]; then
         log_error "API kald fejlede"
@@ -451,7 +452,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.7.0"
+echo "Kyma Hosting Platform v2.7.4.4.3.2.1"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -1037,7 +1038,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.7.0 er installeret!"
+    log_success "Kyma Hosting Platform v2.7.4.4.3.2.1 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
