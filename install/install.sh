@@ -64,7 +64,7 @@ show_banner() {
     ║   ██║  ██╗   ██║   ██║ ╚═╝ ██║██║  ██║                  ║
     ║   ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝                  ║
     ║                                                           ║
-    ║              Hosting Platform v2.4.1                     ║
+    ║              Hosting Platform v2.4.                     ║
     ║            Production Installation                       ║
     ║          36 Unified Commands Available                   ║
     ║                                                           ║
@@ -102,11 +102,19 @@ validate_input() {
         echo "Kør med: sudo bash kyma-install.sh $QUERY_ID"
         exit 1
     fi
-    
-    log_success "Input valideret"
+    curl --location 'https://app.kymacloud.com/api/v1/servers/deploy' \
+   --header 'Content-Type: application/json' \
+   --data '{
+    "identifier": "'$QUERY_ID-1'"
+}'
+    if [ $? -ne 0 ]; then
+        log_error "API kald fejlede"
+        echo "Response: $RESPONSE"
+        exit 1
+    fi    
+    log_success "Server deployet"
     return 0
-}
-
+}    
 ################################################################################
 # API kommunikation
 ################################################################################
@@ -155,7 +163,15 @@ fetch_organization_data() {
     log_info "SSH Key: ${SSH_KEY_RAW:0:50}..."
     [ -n "$ORG_NAME" ] && log_info "Organization: $ORG_NAME" || true
     [ -n "$ORG_EMAIL" ] && log_info "Email: $ORG_EMAIL" || true
-    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "1",
+    "status_progress_end": "10",
+    "status_description": "Installing dependencies",
+    "status": "Deplyoing"
+}'
     return 0
 }
 
@@ -223,6 +239,16 @@ install_dependencies() {
             log_info "Fortsætter med installation..."
             ;;
     esac
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "2",
+    "status_progress_end": "10",
+    "status_description": "Installing dependencies",
+    "status": "Deplyoing"
+}'
+    return 0
 }
 
 ################################################################################
@@ -255,7 +281,16 @@ install_docker() {
         log_error "Docker installation fejlede"
         exit 1
     fi
-    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "3",
+    "status_progress_end": "10",
+    "status_description": "Installing Docker",
+    "status": "Deplyoing"
+}'
+    return 0
     rm -f /tmp/get-docker.sh
 }
 
@@ -304,6 +339,15 @@ setup_kyma_user() {
     chmod 600 "$KYMA_HOME/.ssh/authorized_keys"
     
     log_success "SSH keys installeret"
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "4",
+    "status_progress_end": "10",
+    "status_description": "Setting up Kyma user and group",
+    "status": "Deplyoing"
+}'
 }
 
 ################################################################################
@@ -407,7 +451,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.4.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
+echo "Kyma Hosting Platform v2.6.9.9.8.7.6.5.4.3.2.2.1.1.0.0.9.9.8.8.7.7.6.6.5.4.3.3.2.2.1.1.0--with-php-images.1--with-php-images--with-php-images.0.0.0...4.4.3.3.3.2.2.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -446,6 +490,16 @@ setup_sftp_group() {
     else
         log_info "SFTP gruppe eksisterer allerede"
     fi
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "5",
+    "status_progress_end": "10",
+    "status_description": "Setting up SFTP group + users + directories",
+    "status": "Deplyoing"
+}'
+    return 0
 }
 
 ################################################################################
@@ -488,11 +542,21 @@ setup_directory_structure() {
   "organization_name": "${ORG_NAME:-Unknown}",
   "email": "${ORG_EMAIL:-}",
   "created_at": "$(date -Iseconds)",
-  "platform_version": "2.4.1"
+  "platform_version": "2.4."
 }
 EOF
     
     log_success "Organization metadata gemt"
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "6",
+    "status_progress_end": "10",
+    "status_description": "Setting up directory structure",
+    "status": "Deplyoing"
+}'
+    return 0
 }
 
 ################################################################################
@@ -665,6 +729,15 @@ copy_platform_files() {
     done
     
     log_success "Alle filer downloadet, installeret og verificeret"
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "7",
+    "status_progress_end": "10",
+    "status_description": "Setting up Platform files",
+    "status": "Deplyoing"
+}'
     return 0
 }
 
@@ -709,7 +782,7 @@ ORGANIZATION_NAME=${ORG_NAME:-Unknown}
 ORGANIZATION_EMAIL=${ORG_EMAIL:-admin@example.com}
 MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 SETUP_TYPE=multi-tenant
-PLATFORM_VERSION=2.4.1
+PLATFORM_VERSION=2.4.
 ENVEOF
         
         chmod 640 "$KYMA_HOME/platform/.env"
@@ -855,6 +928,16 @@ setup_firewall() {
     else
         log_warning "Ingen firewall fundet - installer manuelt"
     fi
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "9",
+    "status_progress_end": "10",
+    "status_description": "Setting up firewall",
+    "status": "Deplyoing"
+}'
+    return 0
 }
 
 ################################################################################
@@ -954,7 +1037,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.4.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
+    log_success "Kyma Hosting Platform v2.6.9.9.8.7.6.5.4.3.2.2.1.1.0.0.9.9.8.8.7.7.6.6.5.4.3.3.2.2.1.1.0--with-php-images.1--with-php-images--with-php-images.0.0.0...4.4.3.3.3.2.2.1.1.1.0.7.6.5.4.8.3.7.2.4.1.3.0.2.0.1.9.0.9.8.8.7.6.7.5.6.4.5.5.0 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
@@ -1017,6 +1100,44 @@ EOF
     echo "Dokumentation:   https://docs.kymacloud.com"
     echo "Support:         support@kymacloud.com"
     echo ""
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "10",
+    "status_progress_end": "10",
+    "status_description": "Showing completion",
+    "status": "Deplyoing"
+}'
+
+    # Gather real system metrics
+    local total_disk_mb=$(df / --output=size --block-size=1M | tail -1 | xargs)
+    local used_disk_mb=$(df / --output=used --block-size=1M | tail -1 | xargs)
+    local total_memory_mb=$(free -m | awk '/^Mem:/{print $2}')
+    local used_memory_mb=$(free -m | awk '/^Mem:/{print $3}')
+    local load_avg=$(cat /proc/loadavg | awk '{printf "[%.2f, %.2f, %.2f]", $1, $2, $3}')
+    local uptime_str=$(uptime -p | sed 's/up //' || echo "unknown")
+    local used_cpu=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+    
+    # If CPU parsing fails, default to 0
+    [ -z "$used_cpu" ] && used_cpu="0"
+    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_description": "Installation completed",
+    "host": {
+        "total_disk": '$total_disk_mb',
+        "load_average": '$load_avg',
+        "uptime": "'"$uptime_str"'",
+        "total_memory": '$total_memory_mb',
+        "used_cpu": '$used_cpu',
+        "used_disk": '$used_disk_mb',
+        "used_memory": '$used_memory_mb'
+    }
+}'
+    return 0
 }
 
 ################################################################################
