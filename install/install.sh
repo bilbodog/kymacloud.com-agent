@@ -1148,15 +1148,15 @@ EOF
 
 main() {
     show_banner
+    install_dependencies
+    install_docker
     setup_kyma_user
     # Pre-flight checks
     validate_input
     
     # Installation steps
     fetch_organization_data
-    install_dependencies
-    install_docker
-    
+  
     setup_sudo_permissions
     setup_sftp_group
     setup_directory_structure
