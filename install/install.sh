@@ -248,16 +248,7 @@ setup_kyma_user() {
         return 1
     fi
     
-    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
---header 'Content-Type: application/json' \
---data '{
-    "identifier": "'$QUERY_ID'",
-    "status_progress_start": "1",
-    "status_progress_end": "13",
-    "status_description": "Kymacloud user and SSH configured",
-    "status": "Deploying"
-}'
-}
+}   
 
 ################################################################################
 # System dependencies
@@ -502,7 +493,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.8.4.4.3.2.1.0.9.8.7.6.5.4.3.2.1"
+echo "Kyma Hosting Platform v2.8.7.7.6.5.4.3.2.1.0.9.8.7.6.5.4.3.2.1"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -1123,7 +1114,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.8.4.4.3.2.1.0.9.8.7.6.5.4.3.2.1 er installeret!"
+    log_success "Kyma Hosting Platform v2.8.7.7.6.5.4.3.2.1.0.9.8.7.6.5.4.3.2.1 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
