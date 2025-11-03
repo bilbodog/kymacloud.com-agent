@@ -64,9 +64,9 @@ show_banner() {
     ║   ██║  ██╗   ██║   ██║ ╚═╝ ██║██║  ██║                  ║
     ║   ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝                  ║
     ║                                                           ║
-    ║              Hosting Platform v2.4.                     ║
-    ║            Production Installation                       ║
-    ║          36 Unified Commands Available                   ║
+           ║              Hosting Platform v2.4.                     ║
+           ║            Production Installation                       ║
+           ║          47 Unified Commands + Monitoring                ║
     ║                                                           ║
     ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -493,7 +493,7 @@ alias dc='docker compose'
 alias dps='docker ps'
 alias dlogs='docker compose logs -f'
 
-echo "Kyma Hosting Platform v2.8.7.7.6.5.4.3.2.1.0.9.8.7.6.5.4.3.2.1"
+echo "Kyma Hosting Platform v2.8.9.9.9.8.7.6.5.4.3.2.1.0.9.8.7.6.5.4.3.2.1"
 echo "═══════════════════════════════════════"
 echo "Unified Command System - 36 commands available!"
 echo "═══════════════════════════════════════"
@@ -910,7 +910,7 @@ MANAGEMENT:
   SSH Login:        ssh ${KYMA_USER}@$(hostname -I | awk '{print $1}')
   Unified Command:  kyma <category>:<action>
   
-AVAILABLE COMMANDS (36 total):
+AVAILABLE COMMANDS (47 total):
   Site:         kyma site:add|remove|list|info|backup|restore
   Users:        kyma user:sftp:add|remove|list
                 kyma user:ftp:add|remove|list
@@ -918,6 +918,9 @@ AVAILABLE COMMANDS (36 total):
   Credentials:  kyma credentials:show|sftp
   Diagnostics:  kyma diagnose:ftp|sftp|site
   Backup:       kyma backup:all|platform
+  Monitoring:   kyma monitor:start|stop|restart|status|logs
+                kyma monitor:heartbeat:config|test
+                kyma monitor:certwatch:config|list|extract|sites
   System:       kyma system:start|stop|restart|status|verify|update
 
 ⚠️  VIGTIGT:
@@ -939,7 +942,7 @@ EOF
 --data '{
     "identifier": "'$QUERY_ID'",
     "status_progress_start": "9",
-    "status_progress_end": "13",
+    "status_progress_end": "14",
     "status_description": "Generating configuration files",
     "status": "Deploying"
 }'
@@ -985,7 +988,7 @@ setup_firewall() {
 --data '{
     "identifier": "'$QUERY_ID'",
     "status_progress_start": "10",
-    "status_progress_end": "13",
+    "status_progress_end": "14",
     "status_description": "Setting up firewall",
     "status": "Deploying"
 }'
@@ -996,8 +999,45 @@ setup_firewall() {
 # Start platform
 ################################################################################
 
+install_monitoring() {
+    log_step "STEP 13: Installerer Monitoring Services"
+    
+    log_info "Installerer KymaWatch (Heartbeat Monitoring) og Laravel CertWatch..."
+    
+    # Check if monitoring installation script exists
+    if [ ! -f "$KYMA_HOME/platform/scripts/setup/install-monitoring.sh" ]; then
+        log_warning "Monitoring installation script ikke fundet, springer over..."
+        return 0
+    fi
+    
+    # Install monitoring services
+    log_info "Kører monitoring installation..."
+    
+    # Run as kymacloud user
+    if su - "$KYMA_USER" -c "bash $KYMA_HOME/platform/scripts/setup/install-monitoring.sh \
+        --panel-url https://app.kymacloud.com/api/v1/servers/heartbeat \
+        --identifier $QUERY_ID" > /tmp/monitoring-install.log 2>&1; then
+        log_success "✓ Monitoring services installeret"
+    else
+        log_warning "⚠ Monitoring installation fejlede (non-critical)"
+        log_info "Se detaljer: /tmp/monitoring-install.log"
+    fi
+    
+    curl --location 'https://app.kymacloud.com/api/v1/servers/heartbeat' \
+--header 'Content-Type: application/json' \
+--data '{
+    "identifier": "'$QUERY_ID'",
+    "status_progress_start": "11",
+    "status_progress_end": "14",
+    "status_description": "Installing monitoring services",
+    "status": "Deploying"
+}'
+    
+    return 0
+}
+
 start_platform() {
-    log_step "STEP 13: Starter Hosting Platform"
+    log_step "STEP 14: Starter Hosting Platform"
     
     log_info "Skifter til kymacloud bruger..."
     
@@ -1071,8 +1111,8 @@ start_platform() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "11",
-    "status_progress_end": "13",
+    "status_progress_start": "12",
+    "status_progress_end": "14",
     "status_description": "Platform started and running",
     "status": "Deploying"
 }'
@@ -1096,8 +1136,8 @@ show_completion() {
 --header 'Content-Type: application/json' \
 --data '{
     "identifier": "'$QUERY_ID'",
-    "status_progress_start": "12",
-    "status_progress_end": "13",
+    "status_progress_start": "13",
+    "status_progress_end": "14",
     "status_description": "Finalizing installation",
     "status": "Deploying"
 }'
@@ -1114,7 +1154,7 @@ EOF
     echo -e "${NC}"
     echo ""
     
-    log_success "Kyma Hosting Platform v2.8.7.7.6.5.4.3.2.1.0.9.8.7.6.5.4.3.2.1 er installeret!"
+    log_success "Kyma Hosting Platform v2.8.9.9.9.8.7.6.5.4.3.2.1.0.9.8.7.6.5.4.3.2.1 er installeret!"
     echo ""
     
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
@@ -1156,7 +1196,8 @@ EOF
     echo "Sites Path:      $KYMA_HOME/organizations/${ORG_ID}/sites"
     echo ""
     echo "Platform Features:"
-    echo "  ✓ 36 unified commands via 'kyma' interface"
+    echo "  ✓ 47 unified commands via 'kyma' interface"
+    echo "  ✓ Integrated monitoring (heartbeat + certificate watching)"
     echo "  ✓ Per-site PHP containers (isolation & custom config)"
     echo "  ✓ Built-in diagnostics (kyma diagnose:*)"
     echo "  ✓ Comprehensive backup system (kyma backup:*)"
@@ -1239,7 +1280,7 @@ main() {
     # This MUST come after user setup so the SSH connection works
     notify_deploy
     
-    # STEP 4-13: Continue with rest of installation
+    # STEP 4-14: Continue with rest of installation
     install_dependencies
     install_docker
     add_user_to_docker
@@ -1249,6 +1290,7 @@ main() {
     copy_platform_files
     generate_configuration
     setup_firewall
+    install_monitoring
     start_platform
     
     # Show completion
